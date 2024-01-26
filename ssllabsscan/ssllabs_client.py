@@ -6,6 +6,7 @@ import logging
 import os
 import time
 from datetime import datetime
+from ssllabsscan.quality_gate import *
 
 import requests
 
@@ -31,20 +32,12 @@ FORWARD_SECRECY = {
 }
 
 PROTOCOLS = [
-    "TLS 1.3", "TLS 1.2", "TLS 1.1", "TLS 1.0", "SSL 3.0 INSECURE", "SSL 2.0 INSECURE"
-]
-
-RC4 = ["Support RC4", "RC4 with modern protocols", "RC4 Only"]
-
-VULNERABLES = [
-    "Vuln Beast", "Vuln Drown", "Vuln Heartbleed", "Vuln FREAK",
-    "Vuln openSsl Ccs", "Vuln openSSL LuckyMinus20", "Vuln POODLE", "Vuln POODLE TLS"
+    "TLS 1.3", "TLS 1.2", "TLS 1.1", "TLS 1.0", "SSL 3.0", "SSL 2.0"
 ]
 
 SUMMARY_COL_NAMES = [
-    "Host", "Grade", "HasWarnings", "Cert Expiry", "Chain Status", "Forward Secrecy", "Heartbeat ext"
-] + VULNERABLES + RC4 + PROTOCOLS
-
+    "Host", "Grade", "HasWarnings", "Certificate", "Protocols", "Vuln.", "RCA", "Cipher Suites", "Details", "Headers", "Full Result Download"
+]
 
 class SSLLabsClient():
     def __init__(self, check_progress_interval_secs=30, max_attempts=100, verify=True):
@@ -54,13 +47,14 @@ class SSLLabsClient():
 
     def analyze(self, host, summary_csv_file):
         data = self.start_new_scan(host=host)
-        if data.get("status") == "ERROR":
-            return
 
         # write the output to file
         json_file = os.path.join(os.path.dirname(summary_csv_file), f"{host}.json")
         with open(json_file, "w") as outfile:
             json.dump(data, outfile, indent=2)
+
+        if data.get("status") == "ERROR":
+            return
 
         # write the summary to file
         self.append_summary_csv(summary_csv_file, host, data)
@@ -129,36 +123,90 @@ class SSLLabsClient():
                 # Skip endpoints that were not contactable during the scan (e.g. GitHub Pages URLs with IPv6 endpoints)
                 if "Unable" in ep.get("statusMessage", ""):
                     continue
+                
+                grade = ep["grade"]
+                has_warnings = ep["hasWarnings"]
+
                 # see SUMMARY_COL_NAMES
                 summary = [
                     host,
-                    ep["grade"],
-                    ep["hasWarnings"],
-                    na,
-                    CHAIN_ISSUES[str(ep["details"]["certChains"][0]["issues"])],
-                    FORWARD_SECRECY[str(ep["details"]["forwardSecrecy"])],
-                    ep["details"]["heartbeat"],
-                    ep["details"]["vulnBeast"],
-                    ep["details"]["drownVulnerable"],
-                    ep["details"]["heartbleed"],
-                    ep["details"]["freak"],
-                    False if ep["details"]["openSslCcs"] == 1 else True,
-                    False if ep["details"]["openSSLLuckyMinus20"] == 1 else True,
-                    ep["details"]["poodle"],
-                    False if ep["details"]["poodleTls"] == 1 else True,
-                    ep["details"]["supportsRc4"],
-                    ep["details"]["rc4WithModern"],
-                    ep["details"]["rc4Only"],
+                    grade,
+                    has_warnings
                 ]
+
+                # Certificate check
+                chain_details = f'Expiry: {na} <br>'
+                chain_details += f'Chain status: {CHAIN_ISSUES[str(ep["details"]["certChains"][0]["issues"])]}'
+                summary.append(chain_details)
+
+                # Protocols                
+                protocols = ""
                 for protocol in PROTOCOLS:
                     found = False
                     for p in ep["details"]["protocols"]:
                         if protocol.startswith(f"{p['name']} {p['version']}"):
                             found = True
                             break
-                    summary += ["Yes" if found is True else "No"]
+                    protocols += f'{protocol}: {"Yes" if found is True else "No"} <br>'                    
+                summary.append(protocols)
+
+                # Vulnerabilities    
+                vulnarables = ''            
+                vulnarables_list = []
+                vulnarables_list.append(f'Vuln Beast: {ep["details"]["vulnBeast"]}')
+                vulnarables_list.append(f'Vuln Drow: {ep["details"]["drownVulnerable"]}')
+                vulnarables_list.append(f'Vuln Heartbleed: {ep["details"]["heartbleed"]}')
+                vulnarables_list.append(f'Vuln FREAK: {ep["details"]["freak"]}')
+                vulnarables_list.append(f'Vuln openSsl Ccs: {False if ep["details"]["openSslCcs"] == 1 else True}')
+                vulnarables_list.append(f'Vuln openSSL LuckyMinus20: {False if ep["details"]["openSSLLuckyMinus20"] == 1 else True}')
+                vulnarables_list.append(f'Vuln POODLE: {ep["details"]["poodle"]}')
+                vulnarables_list.append(f'Vuln POODLE TLS: {False if ep["details"]["poodleTls"] == 1 else True}')
+                for vulnarable_item in vulnarables_list:
+                    vulnarables += vulnarable_item + ' <br> '
+                summary.append(vulnarables)
+
+                # RC4s
+                rc4s = f'Support RC4: {ep["details"]["supportsRc4"]} <br>'
+                rc4s += f'RC4 with modern protocols: {ep["details"]["rc4WithModern"]} <br>'
+                rc4s += f'RC4 Only: {ep["details"]["rc4Only"]} <br>'
+                summary.append(rc4s)
+
+                # Ciphers
+                ciphers_suite = ""
+                for suite in ep["details"]["suites"]:
+                    for list_item in suite["list"]:
+                        if (list_item["cipherStrength"] < 128):
+                            ciphers_suite += list_item["name"] + " (INSECURE) - " + str(list_item["cipherStrength"]) + " <br> "
+
+                if (ciphers_suite == ""):
+                    ciphers_suite = "OK"
+
+                summary.append(ciphers_suite)
+
+                # "Forward Secrecy", "Heartbeat ext",
+                details = f'Forward Secrecy: {FORWARD_SECRECY[str(ep["details"]["forwardSecrecy"])]} <br> '
+                details += f'Heartbeat ext: {ep["details"]["heartbeat"]}'
+                summary.append(details)
+
+                # HTTP Headers
+                http_headers = ""
+                for http_transactions in ep["details"]["httpTransactions"]:
+                    for http_header in http_transactions["responseHeaders"]:
+                        name_value = f"{http_header['name']}: {http_header['value']}".replace(',', '')
+                        http_headers += name_value + " <br> "
+
+                summary.append(http_headers)
+
+                # json full result file
+                host_json_file = f'{host}.json'
+                summary.append(f'<a target="_blank" href={host_json_file}>{host_json_file}</a>')
 
                 outfile.write(",".join(str(s) for s in summary) + "\n")
+
+                try:
+                    quality_check(host, grade, has_warnings)
+                except Exception as error:
+                    print(str(error))
 
     def print_msg(self, response, msg_type, host=None):
         results = response.json()

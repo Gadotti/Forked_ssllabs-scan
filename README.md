@@ -1,17 +1,25 @@
-# SSL Labs Scan
+# Disclaimer
 
-[![githubactions](https://github.com/kyhau/ssllabs-scan/actions/workflows/ci-workflow.yaml/badge.svg)](https://github.com/kyhau/ssllabs-scan/actions/workflows/ci-workflow.yaml)
-[![codecov](https://codecov.io/gh/kyhau/ssllabs-scan/branch/main/graph/badge.svg)](https://app.codecov.io/gh/kyhau/ssllabs-scan/tree/main)
-[![CodeQL](https://github.com/kyhau/ssllabs-scan/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/kyhau/ssllabs-scan/actions/workflows/codeql-analysis.yml)
-[![SecretsScan](https://github.com/kyhau/ssllabs-scan/actions/workflows/secrets-scan.yml/badge.svg)](https://github.com/kyhau/ssllabs-scan/actions/workflows/secrets-scan.yml)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](http://en.wikipedia.org/wiki/MIT_License)
+This is a forked project from https://github.com/kyhau/ssllabs-scan.
+This project has been forked with the aim of customizing outputs and making the project more minimalist, with some additional features.
+
+## Key Features modified from the Main Project
+
+* Added execution log generation.
+* Acceptance of a new argument to set the folder where log files will be saved.
+* Added Discord notification support.
+* Modified HTML output page formatting, condensing multiple pieces of information into columns to reduce the number of columns, but added header information for presentation.
+* Modified HTML output page formatting to display the time of the last * generation and the ability to download the generated JSON and CSV files.
+* Prioritized the recording of the JSON file regardless of the return status.
+* Defined quality gate logic for triggering alerts.
+* Removed support and documentation related to tests and Docker.
+
+# SSL Labs Scan
 
 This tool calls the SSL Labs [API v3](https://github.com/ssllabs/ssllabs-scan/blob/master/ssllabs-api-docs-v3.md) to do SSL testings on the given hosts, and generates csv and html reports.
 
-All notable changes to this project will be documented in [CHANGELOG](./CHANGELOG.md).
-
 ---
-## Built with
+## Main projet built with
 - Python - support Python 3.8, 3.9, 3.10, 3.11.
 - [CodeQL](https://codeql.github.com) is [enabled](.github/workflows/codeql-analysis.yml) in this repository.
 - [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates) is [enabled](.github/dependabot.yml) for auto dependency updates.
@@ -65,23 +73,6 @@ pip install -e .
 ssllabs-scan sample\SampleServerList.txt
 ```
 
-### Docker
-```
-# Build docker image
-docker build . --tag=ssllabsscan
-```
-Running Docker from commandline:
-```
-# create directory for input and output
-mkdir out
-# put serverlist in directory
-cp SampleServerlist.txt out
-# Run docker image with created directory mounted as /tmp
-# use -t option to prevent output buffering
-docker run --mount type=bind,source=./out,target=/tmp ssllabsscan  -o /tmp/output.html -s /tmp/output.csv /tmp/SampleServerList.txt
-# all html, csv, json output is in the out directory
-```
-
 ### Example console output
 ```
 $ ssllabs-scan sample/SampleServerList.txt
@@ -98,11 +89,4 @@ Status: IN_PROGRESS, StatusMsg(None): waiting 30 secs until next check...
 Status: IN_PROGRESS, StatusMsg(None): waiting 30 secs until next check...
 Status: IN_PROGRESS, StatusMsg(None): waiting 30 secs until next check...
 Creating summary.html ...
-```
-
-## Run Tox tests and build the wheels
-
-```
-pip install -r requirements-build.txt
-tox -r
 ```

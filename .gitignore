@@ -3,6 +3,7 @@
 /summary.csv
 /summary.html
 /*.json
+/results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
