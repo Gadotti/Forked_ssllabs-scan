@@ -154,7 +154,7 @@ class SSLLabsClient():
                 vulnarables = ''            
                 vulnarables_list = []
                 vulnarables_list.append(f'Vuln Beast: {ep["details"]["vulnBeast"]}')
-                # vulnarables_list.append(f'Vuln Drow: {ep["details"]["drownVulnerable"]}') --Not present in json from Mar/2024
+                vulnarables_list.append(f'Vuln Drow: {ep["details"].get("drownVulnerable", False)}')
                 vulnarables_list.append(f'Vuln Heartbleed: {ep["details"]["heartbleed"]}')
                 vulnarables_list.append(f'Vuln FREAK: {ep["details"]["freak"]}')
                 vulnarables_list.append(f'Vuln openSsl Ccs: {False if ep["details"]["openSslCcs"] == 1 else True}')
