@@ -3,12 +3,12 @@ import requests
 DISCORD_WEBHOOK_URL = "[webhook_url]"
 
 def notify(host: str):
-    content = f"SSLlabs Scan: The host '{host}' did not meet the quality parameters, please check."    
+    content = f"**SSLlabs Scan:** The host '{host}' did not meet the quality parameters, please check."    
     print(content)
     discord_notification(content)
 
 def notify_exception(host: str, error: str):
-    content = f"SSLlabs Scan [EXCEPTION]: Host - '{host}'. Error: {error}"
+    content = f"**SSLlabs Scan [EXCEPTION]:** Host - '{host}'. Error: {error}"
     print(content)
     discord_notification(content)
 

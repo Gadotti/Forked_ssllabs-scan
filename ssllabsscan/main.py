@@ -12,6 +12,7 @@ from datetime import datetime
 from ssllabsscan.log import log_event
 from ssllabsscan.report_template import REPORT_HTML
 from ssllabsscan.ssllabs_client import SUMMARY_COL_NAMES, SSLLabsClient
+from ssllabsscan.notify import notify_exception
 
 LOG_FOLDER = ""
 SUMMARY_CSV = "results\summary.csv"
@@ -79,6 +80,7 @@ def process(
             traceback.print_exc()
             error_message = str(error)
             log_event(log_folder, '    Exception: ' + error_message)
+            notify_exception(server, error_message)
             ret = 1
 
     output_summary_html(summary_csv, summary_html)
